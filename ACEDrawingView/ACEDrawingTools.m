@@ -39,6 +39,15 @@ CGPoint midPoint(CGPoint p1, CGPoint p2)
 
 #pragma mark - ACEDrawingPenTool
 
+static NSString *const kPath = @"path";
+static NSString *const kLineColor = @"lineColor";
+static NSString *const kLineAlpha = @"lineAlpha";
+static NSString *const kLineWidth = @"lineWidth";
+static NSString *const kLabelView = @"labelView";
+static NSString *const kFirstPoint = @"firstPoint";
+static NSString *const kLastPoint = @"lastPoint";
+static NSString *const kFill = @"fill";
+
 @implementation ACEDrawingPenTool
 
 @synthesize lineColor = _lineColor;
@@ -104,6 +113,52 @@ CGPoint midPoint(CGPoint p1, CGPoint p2)
     #if !ACE_HAS_ARC
     [super dealloc];
     #endif
+}
+
+- (instancetype)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super init];
+    
+    if (self) {
+        UIBezierPath *bezierPath = [aDecoder decodeObjectForKey:kPath];
+        path = [self mutablePathFromBezierPath:bezierPath];
+        
+        self.lineColor = [aDecoder decodeObjectForKey:kLineColor];
+        self.lineAlpha = [aDecoder decodeFloatForKey:kLineAlpha];
+        self.lineWidth = [aDecoder decodeFloatForKey:kLineWidth];
+    }
+    
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    UIBezierPath *bezierPath = [self bezierPathFromMutablePath:path];
+    [aCoder encodeObject:bezierPath forKey:kPath];
+    
+    [aCoder encodeObject:self.lineColor forKey:kLineColor];
+    [aCoder encodeFloat:self.lineAlpha forKey:kLineAlpha];
+    [aCoder encodeFloat:self.lineWidth forKey:kLineWidth];
+}
+
+- (UIBezierPath *)bezierPathFromMutablePath:(CGMutablePathRef)mutablePath
+{
+    CGPathRef persistentPath = CGPathCreateCopy(mutablePath);
+    UIBezierPath *bezierPath = [UIBezierPath bezierPathWithCGPath:persistentPath];
+    CGPathRelease(persistentPath);
+    
+    return bezierPath;
+}
+
+- (CGMutablePathRef)mutablePathFromBezierPath:(UIBezierPath *)bezierPath
+{
+    if (!bezierPath) {
+        bezierPath = [UIBezierPath bezierPath];
+    }
+    
+    CGPathRef persistentPath = [bezierPath CGPath];
+    
+    return CGPathCreateMutableCopy(persistentPath);
 }
 
 @end
@@ -186,6 +241,26 @@ CGPoint midPoint(CGPoint p1, CGPoint p2)
 #if !ACE_HAS_ARC
     [super dealloc];
 #endif
+}
+
+- (instancetype)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super init];
+    
+    if (self) {
+        self.lineColor = [aDecoder decodeObjectForKey:kLineColor];
+        self.lineAlpha = [[aDecoder decodeObjectForKey:kLineAlpha] floatValue];
+        self.lineWidth = [[aDecoder decodeObjectForKey:kLineWidth] floatValue];
+    }
+    
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    [aCoder encodeObject:self.lineColor forKey:kLineColor];
+    [aCoder encodeObject:@(self.lineAlpha) forKey:kLineAlpha];
+    [aCoder encodeObject:@(self.lineWidth) forKey:kLineWidth];
 }
 
 @end
@@ -338,6 +413,28 @@ CGPoint midPoint(CGPoint p1, CGPoint p2)
     [self.undoPositions removeLastObject];
 }
 
+- (instancetype)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super init];
+    
+    if (self) {
+        self.lineColor = [aDecoder decodeObjectForKey:kLineColor];
+        self.lineAlpha = [[aDecoder decodeObjectForKey:kLineAlpha] floatValue];
+        self.lineWidth = [[aDecoder decodeObjectForKey:kLineWidth] floatValue];
+        _labelView = [aDecoder decodeObjectForKey:kLabelView];
+    }
+    
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    [aCoder encodeObject:self.lineColor forKey:kLineColor];
+    [aCoder encodeObject:@(self.lineAlpha) forKey:kLineAlpha];
+    [aCoder encodeObject:@(self.lineWidth) forKey:kLineWidth];
+    [aCoder encodeObject:_labelView forKey:kLabelView];
+}
+
 @end
 
 #pragma mark - ACEDrawingRectangleTool
@@ -396,6 +493,32 @@ CGPoint midPoint(CGPoint p1, CGPoint p2)
 #if !ACE_HAS_ARC
     [super dealloc];
 #endif
+}
+
+- (instancetype)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super init];
+    
+    if (self) {
+        self.lineColor = [aDecoder decodeObjectForKey:kLineColor];
+        self.lineAlpha = [aDecoder decodeFloatForKey:kLineAlpha];
+        self.lineWidth = [aDecoder decodeFloatForKey:kLineWidth];
+        self.firstPoint = [aDecoder decodeCGPointForKey:kFirstPoint];
+        self.lastPoint = [aDecoder decodeCGPointForKey:kLastPoint];
+        self.fill = [aDecoder decodeBoolForKey:kFill];
+    }
+    
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    [aCoder encodeObject:self.lineColor forKey:kLineColor];
+    [aCoder encodeFloat:self.lineAlpha forKey:kLineAlpha];
+    [aCoder encodeFloat:self.lineWidth forKey:kLineWidth];
+    [aCoder encodeCGPoint:self.firstPoint forKey:kFirstPoint];
+    [aCoder encodeCGPoint:self.lastPoint forKey:kLastPoint];
+    [aCoder encodeBool:self.fill forKey:kFill];
 }
 
 @end
@@ -457,6 +580,32 @@ CGPoint midPoint(CGPoint p1, CGPoint p2)
 #if !ACE_HAS_ARC
     [super dealloc];
 #endif
+}
+
+- (instancetype)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super init];
+    
+    if (self) {
+        self.lineColor = [aDecoder decodeObjectForKey:kLineColor];
+        self.lineAlpha = [aDecoder decodeFloatForKey:kLineAlpha];
+        self.lineWidth = [aDecoder decodeFloatForKey:kLineWidth];
+        self.firstPoint = [aDecoder decodeCGPointForKey:kFirstPoint];
+        self.lastPoint = [aDecoder decodeCGPointForKey:kLastPoint];
+        self.fill = [aDecoder decodeBoolForKey:kFill];
+    }
+    
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    [aCoder encodeObject:self.lineColor forKey:kLineColor];
+    [aCoder encodeFloat:self.lineAlpha forKey:kLineAlpha];
+    [aCoder encodeFloat:self.lineWidth forKey:kLineWidth];
+    [aCoder encodeCGPoint:self.firstPoint forKey:kFirstPoint];
+    [aCoder encodeCGPoint:self.lastPoint forKey:kLastPoint];
+    [aCoder encodeBool:self.fill forKey:kFill];
 }
 
 @end
@@ -543,6 +692,30 @@ CGPoint midPoint(CGPoint p1, CGPoint p2)
 #if !ACE_HAS_ARC
     [super dealloc];
 #endif
+}
+
+- (instancetype)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super init];
+    
+    if (self) {
+        self.lineColor = [aDecoder decodeObjectForKey:kLineColor];
+        self.lineAlpha = [aDecoder decodeFloatForKey:kLineAlpha];
+        self.lineWidth = [aDecoder decodeFloatForKey:kLineWidth];
+        self.firstPoint = [aDecoder decodeCGPointForKey:kFirstPoint];
+        self.lastPoint = [aDecoder decodeCGPointForKey:kLastPoint];
+    }
+    
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    [aCoder encodeObject:self.lineColor forKey:kLineColor];
+    [aCoder encodeFloat:self.lineAlpha forKey:kLineAlpha];
+    [aCoder encodeFloat:self.lineWidth forKey:kLineWidth];
+    [aCoder encodeCGPoint:self.firstPoint forKey:kFirstPoint];
+    [aCoder encodeCGPoint:self.lastPoint forKey:kLastPoint];
 }
 
 @end

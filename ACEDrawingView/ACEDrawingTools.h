@@ -43,7 +43,7 @@
 #endif
 
 
-@protocol ACEDrawingTool <NSObject>
+@protocol ACEDrawingTool <NSObject, NSCoding>
 
 @property (nonatomic, strong) UIColor *lineColor;
 @property (nonatomic, assign) CGFloat lineAlpha;

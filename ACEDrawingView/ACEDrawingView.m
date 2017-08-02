@@ -45,6 +45,7 @@
 }
 
 @property (nonatomic, strong) NSMutableArray *pathArray;
+@property (nonatomic, strong) NSMutableArray *pathDataArray;
 
 @property (nonatomic, strong) NSMutableArray *redoStates;
 @property (nonatomic, strong) NSMutableArray *undoStates;
@@ -80,7 +81,7 @@
 - (void)configure
 {
     // init the private arrays
-    self.pathArray = [NSMutableArray array];
+    [self configureToolStack];
     
     self.redoStates = [NSMutableArray array];
     self.undoStates = [NSMutableArray array];
@@ -111,6 +112,79 @@
     [self setBackgroundImage:prev_image];
 }
 
+#pragma mark - Tools Stack
+
+- (NSArray<NSData *> *)getCurrentDrawingsData
+{
+    return [self.pathDataArray copy];
+}
+
+- (NSArray<id<ACEDrawingTool>> *)getCurrentDrawings
+{
+    return [self.pathArray copy];
+}
+
+- (void)configureToolStack
+{
+    self.pathArray = [NSMutableArray array];
+    self.pathDataArray = [NSMutableArray array];
+}
+
+- (void)commitAndDiscardToolStack
+{
+    [self updateCacheImage:YES];
+    self.backgroundImage = self.cacheImage;
+    [self discardToolStack];
+}
+
+- (void)discardToolStack
+{
+    [self.pathArray removeAllObjects];
+    [self.pathDataArray removeAllObjects];
+}
+
+- (void)addToolToStack:(id<ACEDrawingTool>)tool
+{
+    NSData *toolData = [NSKeyedArchiver archivedDataWithRootObject:tool];
+    
+    [self.pathDataArray addObject:toolData];
+    [self.pathArray addObject:tool];
+}
+
+- (void)removeToolFromStack:(id<ACEDrawingTool>)tool
+{
+    [self.pathArray enumerateObjectsUsingBlock:^(id<ACEDrawingTool> currentTool, NSUInteger toolIndex, BOOL *stop) {
+        if (currentTool == tool) {
+            [self.pathArray removeObjectAtIndex:toolIndex];
+            [self.pathDataArray removeObjectAtIndex:toolIndex];
+            *stop = YES;
+        }
+    }];
+}
+
+- (void)updateDrawingsData:(NSArray<NSData *> *)drawingToolsData
+{
+    NSMutableArray *drawingTools = [NSMutableArray array];
+    
+    for (NSData *drawingToolData in drawingToolsData) {
+        id<ACEDrawingTool> drawingTool = [NSKeyedUnarchiver unarchiveObjectWithData:drawingToolData];
+        [drawingTools addObject:drawingTool];
+    }
+    
+    [self updateDrawings:drawingTools];
+}
+
+- (void)updateDrawings:(NSArray<id<ACEDrawingTool>> *)drawingTools
+{
+    [self discardToolStack];
+    
+    for (id<ACEDrawingTool> drawingTool in drawingTools) {
+        [self addToolToStack:drawingTool];
+    }
+    
+    [self updateCacheImage:YES];
+    [self setNeedsDisplay];
+}
 
 #pragma mark - Drawing
 
@@ -131,13 +205,6 @@
     }
     [self.currentTool draw];
 #endif
-}
-
-- (void)commitAndDiscardToolStack
-{
-    [self updateCacheImage:YES];
-    self.backgroundImage = self.cacheImage;
-    [self.pathArray removeAllObjects];
 }
 
 - (void)updateCacheImage:(BOOL)redraw
@@ -322,7 +389,7 @@
         // do nothing
         
     } else {
-        [self.pathArray addObject:self.currentTool];
+        [self addToolToStack:self.currentTool];
         [self.undoStates addObject:[self.currentTool captureToolState]];
         
         [self.currentTool setInitialPoint:currentPoint];
@@ -381,11 +448,13 @@
             [self.currentTool setInitialPoint:point];
             self.draggableTextView = ((ACEDrawingDraggableTextTool *)self.currentTool).labelView;
             
-            [self.pathArray addObject:self.currentTool];
+            [self addToolToStack:self.currentTool];
             
             [self finishDrawing];
         }
     } else {
+        [self removeToolFromStack:self.currentTool];
+        [self addToolToStack:self.currentTool]; // Readd tool to update latest state of corresponding NSData
         [self finishDrawing];
     }
 }
@@ -428,7 +497,7 @@
     // when loading an external image, I'm cleaning all the paths and the undo buffer
     [self.redoStates removeAllObjects];
     [self.undoStates removeAllObjects];
-    [self.pathArray removeAllObjects];
+    [self discardToolStack];
     [self updateCacheImage:YES];
     [self setNeedsDisplay];
 }
@@ -476,7 +545,7 @@
     
     [self.redoStates removeAllObjects];
     [self.undoStates removeAllObjects];
-    [self.pathArray removeAllObjects];
+    [self discardToolStack];
     self.backgroundImage = nil;
     [self updateCacheImage:YES];
     [self setNeedsDisplay];
@@ -519,11 +588,7 @@
                 [(ACEDrawingDraggableTextTool *)undoState.tool undraw];
             }
             
-            [self.pathArray enumerateObjectsUsingBlock:^(id<ACEDrawingTool> tool, NSUInteger idx, BOOL *stop) {
-                if (tool == undoState.tool) {
-                    [self.pathArray removeObjectAtIndex:idx];
-                }
-            }];
+            [self removeToolFromStack:undoState.tool];
             
             [self.undoStates removeLastObject];
             
@@ -557,7 +622,7 @@
         ACEDrawingToolState *redoState = [self.redoStates lastObject];
         
         if ([self lastStateForTool:redoState.tool inStateArray:self.redoStates]) {
-            [self.pathArray addObject:redoState.tool];
+            [self addToolToStack:redoState.tool];
         }
         
         [self.redoStates removeLastObject];
@@ -595,6 +660,7 @@
 - (void)dealloc
 {
     self.pathArray = nil;
+    self.pathDataArray = nil;
     self.redoStates = nil;
     self.undoStates = nil;
     self.currentTool = nil;
@@ -614,7 +680,7 @@
     ACEDrawingDraggableTextTool *tool = [self draggableTextToolForLabel:label];
     
     // TODO: handle close for adding redo state on close
-    [self.pathArray removeObject:tool];
+    [self removeToolFromStack:tool];
     
     // call the delegate
     if ([self.delegate respondsToSelector:@selector(drawingView:didEndDrawUsingTool:)]) {
@@ -645,7 +711,7 @@
     ACEDrawingDraggableTextTool *tool = [self draggableTextToolForLabel:label];
     
     if (![tool.labelView.textValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].length) {
-        [self.pathArray removeObject:tool];
+        [self removeToolFromStack:tool];
     }
     
     // if there are no undo states for the current tool, then we need to capture the first state

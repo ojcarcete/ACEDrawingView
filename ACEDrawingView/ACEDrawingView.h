@@ -95,6 +95,12 @@ typedef NS_ENUM(NSUInteger, ACEDrawingMode) {
  */
 - (void)commitAndDiscardToolStack;
 
+- (NSArray<NSData *> *)getCurrentDrawingsData;
+- (NSArray<id<ACEDrawingTool>> *)getCurrentDrawings;
+
+- (void)updateDrawingsData:(NSArray<NSData *> *)drawingToolsData;
+- (void)updateDrawings:(NSArray<id<ACEDrawingTool>> *)drawingTools;
+
 @end
 
 #pragma mark - 

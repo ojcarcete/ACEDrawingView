@@ -179,6 +179,7 @@
     [self discardToolStack];
     
     for (id<ACEDrawingTool> drawingTool in drawingTools) {
+        [self configureDependenciesForTool:drawingTool];
         [self addToolToStack:drawingTool];
     }
     
@@ -296,66 +297,89 @@
 
 - (id<ACEDrawingTool>)toolWithCurrentSettings
 {
+    id<ACEDrawingTool> baseTool = nil;
+    
     switch (self.drawTool) {
         case ACEDrawingToolTypePen:
         {
-            return ACE_AUTORELEASE([ACEDrawingPenTool new]);
+            baseTool = ACE_AUTORELEASE([ACEDrawingPenTool new]);
+            break;
         }
             
         case ACEDrawingToolTypeLine:
         {
-            return ACE_AUTORELEASE([ACEDrawingLineTool new]);
+            baseTool = ACE_AUTORELEASE([ACEDrawingLineTool new]);
+            break;
         }
             
         case ACEDrawingToolTypeArrow:
         {
-            return ACE_AUTORELEASE([ACEDrawingArrowTool new]);
+            baseTool = ACE_AUTORELEASE([ACEDrawingArrowTool new]);
+            break;
         }
             
         case ACEDrawingToolTypeDraggableText:
         {
             ACEDrawingDraggableTextTool *tool = ACE_AUTORELEASE([ACEDrawingDraggableTextTool new]);
             tool.drawingView = self;
-            return tool;
+            baseTool = tool;
+            break;
         }
 
         case ACEDrawingToolTypeRectagleStroke:
         {
             ACEDrawingRectangleTool *tool = ACE_AUTORELEASE([ACEDrawingRectangleTool new]);
             tool.fill = NO;
-            return tool;
+            baseTool = tool;
+            break;
         }
             
         case ACEDrawingToolTypeRectagleFill:
         {
             ACEDrawingRectangleTool *tool = ACE_AUTORELEASE([ACEDrawingRectangleTool new]);
             tool.fill = YES;
-            return tool;
+            baseTool = tool;
+            break;
         }
             
         case ACEDrawingToolTypeEllipseStroke:
         {
             ACEDrawingEllipseTool *tool = ACE_AUTORELEASE([ACEDrawingEllipseTool new]);
             tool.fill = NO;
-            return tool;
+            baseTool = tool;
         }
             
         case ACEDrawingToolTypeEllipseFill:
         {
             ACEDrawingEllipseTool *tool = ACE_AUTORELEASE([ACEDrawingEllipseTool new]);
             tool.fill = YES;
-            return tool;
+            baseTool = tool;
+            break;
         }
             
         case ACEDrawingToolTypeEraser:
         {
-            return ACE_AUTORELEASE([ACEDrawingEraserTool new]);
+            baseTool = ACE_AUTORELEASE([ACEDrawingEraserTool new]);
+            break;
         }
             
         case ACEDrawingToolTypeCustom:
         {
-            return self.customDrawTool;
+            baseTool = self.customDrawTool;
+            break;
         }
+    }
+    
+    [self configureDependenciesForTool:baseTool];
+    
+    return baseTool;
+}
+
+- (void)configureDependenciesForTool:(id<ACEDrawingTool>)unconfiguredTool
+{
+    if ([unconfiguredTool isKindOfClass:[ACEDrawingDraggableTextTool class]]) {
+        ACEDrawingDraggableTextTool *tool = (ACEDrawingDraggableTextTool *)unconfiguredTool;
+        tool.drawingView = self;
     }
 }
 
